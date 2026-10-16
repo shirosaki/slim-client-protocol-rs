@@ -68,6 +68,7 @@ pub fn discover(timeout: Option<Duration>) -> io::Result<Option<Server>> {
                 },
                 sync_group_id: None,
                 caps: Capabilities(Vec::new()), // No capabilities in discovery
+                mac: None,
             })),
             _ => Ok(None),
         },

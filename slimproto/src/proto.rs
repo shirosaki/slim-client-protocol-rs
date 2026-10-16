@@ -35,6 +35,7 @@ pub struct Server {
     pub tlv_map: Option<ServerTlvMap>,
     pub sync_group_id: Option<String>,
     pub(crate) caps: Capabilities,
+    pub mac: Option<[u8; 6]>,
 }
 
 /// Allow to clone the server.
@@ -46,6 +47,7 @@ impl Clone for Server {
             tlv_map: None,
             sync_group_id: self.sync_group_id.as_ref().map(String::from),
             caps: self.caps.clone(),
+            mac: None,
         }
     }
 }
@@ -58,6 +60,7 @@ impl From<(Ipv4Addr, Option<String>)> for Server {
             tlv_map: None,
             sync_group_id: value.1,
             caps: Capabilities(Vec::new()),
+            mac: None,
         }
     }
 }
@@ -69,6 +72,7 @@ impl From<SocketAddrV4> for Server {
             tlv_map: None,
             sync_group_id: None,
             caps: Capabilities(Vec::new()),
+            mac: None,
         }
     }
 }
@@ -80,6 +84,7 @@ impl Default for Server {
             tlv_map: None,
             sync_group_id: None,
             caps: Capabilities(Vec::new()),
+            mac: None,
         }
     }
 }
@@ -97,13 +102,19 @@ impl Server {
         // cx.set_read_timeout(Some(Duration::from_secs(30)))?;
         // cx.set_write_timeout(Some(Duration::from_secs(30)))?;
 
+        let mac = match self.mac {
+            Some(mac) => MacAddress::new(mac),
+            None => {
+                match get_mac_address() {
+                    Ok(Some(mac)) => mac,
+                    _ => MacAddress::new([1, 2, 3, 4, 5, 6]),
+                }
+            }
+        };
         let helo = ClientMessage::Helo {
             device_id: 12,
             revision: 0,
-            mac: match get_mac_address() {
-                Ok(Some(mac)) => mac,
-                _ => MacAddress::new([1, 2, 3, 4, 5, 6]),
-            },
+            mac: mac,
             uuid: [0u8; 16],
             wlan_channel_list: 0,
             bytes_received: 0,
@@ -116,6 +127,16 @@ impl Server {
 
         tx.framed_write(helo)?;
         Ok((rx, tx))
+    }
+
+    pub fn with_capabilities(mut self, caps: Capabilities) -> Self {
+        self.caps = caps;
+        self
+    }
+
+    pub fn with_mac_address(mut self, mac: [u8; 6]) -> Self {
+        self.mac = Some(mac);
+        self
     }
 }
 
